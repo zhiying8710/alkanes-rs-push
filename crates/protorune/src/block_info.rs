@@ -79,25 +79,34 @@ pub fn get_block_info(height: u64) -> Result<BlockInfo> {
     // 2. 使用OUTPOINT_BY_HEIGHT表直接获取该区块的所有outpoint
     let mut outpoint_balances = HashMap::new();
     let outpoints = OUTPOINT_BY_HEIGHT.select_value::<u64>(height).get_list();
+    println!("height: {:?}, outpoints: {:?}", height, outpoints.len());
 
     for outpoint_bytes in outpoints {
         let outpoint = consensus_decode::<OutPoint>(&mut Cursor::new(outpoint_bytes.as_ref().to_vec()))?;
         let output_len = outpoint.vout;
         let txid = outpoint.txid;
+        let rtxid = reverse_txid(&txid);
+
 
         for i in 0..output_len {
-            let _outpoint = OutPoint {
-                txid,
-                vout: i,
-            };
-            let outpoint_response = protorune_outpoint_to_outpoint_response(&_outpoint, 1).unwrap_or_else(|_| OutpointResponse::new());
-
-            let balance_sheet = outpoint_response.balances.clone().unwrap_or_default();
-            if balance_sheet.clone().entries.is_empty() {
-                continue;
+            for _txid in vec![txid, rtxid] {
+                let _outpoint = OutPoint {
+                    txid: _txid,
+                    vout: i,
+                };
+                let outpoint_response = protorune_outpoint_to_outpoint_response(&_outpoint, 1).unwrap_or_else(|_| OutpointResponse::new());
+    
+                let balance_sheet = outpoint_response.balances.clone().unwrap_or_default();
+                if balance_sheet.clone().entries.is_empty() {
+                    continue;
+                }
+    
+                outpoint_balances.insert(OutPoint {
+                    txid: _txid,
+                    vout: i,
+                }, outpoint_response);
+                break;
             }
-
-            outpoint_balances.insert(_outpoint, outpoint_response);
         }
     }
 
