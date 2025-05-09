@@ -82,15 +82,10 @@ pub fn get_block_info(height: u64) -> Result<BlockInfo> {
 
     for outpoint_bytes in outpoints {
         let outpoint = consensus_decode::<OutPoint>(&mut Cursor::new(outpoint_bytes.as_ref().to_vec()))?;
-        let output_len = outpoint.vout >> 16;
-        let vout = outpoint.vout & 0xFFFF;
+        let output_len = outpoint.vout;
         let txid = outpoint.txid;
-        let rtxid = reverse_txid(&txid);
 
         for i in 0..output_len {
-            if i == vout {
-                continue;
-            }
             let _outpoint = OutPoint {
                 txid,
                 vout: i,
