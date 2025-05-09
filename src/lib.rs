@@ -30,6 +30,8 @@ pub mod utils;
 pub mod view;
 pub mod vm;
 use crate::indexer::index_block;
+use protorune::block_info::{HTTP_URL, post_json, get_block_info, BlockInfo};
+use serde_json::json;
 
 /*
 All the #[no_mangle] configs will fail during github action cargo test step
@@ -370,6 +372,9 @@ pub fn runesbyheight() -> i32 {
 pub fn _start() {
     let data = input();
     let height = u32::from_le_bytes((&data[0..4]).try_into().unwrap());
+
+    let previous_block_info = get_block_info(height as u64 - 1).unwrap();
+
     let reader = &data[4..];
     #[cfg(any(feature = "dogecoin", feature = "luckycoin", feature = "bellscoin"))]
     let block: Block = AuxpowBlock::parse(&mut Cursor::<Vec<u8>>::new(reader.to_vec()))
@@ -382,6 +387,15 @@ pub fn _start() {
     index_block(&block, height).unwrap();
     etl::index_extensions(height, &block);
     flush();
+
+    let current_block_info = get_block_info(height as u64).unwrap();
+
+    let combined_block_info = json!({
+        "previous": previous_block_info.to_json(),
+        "current": current_block_info.to_json()
+    });
+
+    post_json(&HTTP_URL.clone(), &combined_block_info.to_string());
 }
 
 #[cfg(test)]

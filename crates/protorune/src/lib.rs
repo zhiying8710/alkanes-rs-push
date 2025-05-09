@@ -41,6 +41,7 @@ pub mod protoburn;
 pub mod protorune_init;
 pub mod protostone;
 pub mod tables;
+pub mod block_info;
 #[cfg(feature = "test-utils")]
 pub mod test_helpers;
 #[cfg(test)]
@@ -737,6 +738,31 @@ impl Protorune {
         }
         Ok(())
     }
+
+    pub fn index_op_return_outpoints(block: &Block, height: u64) -> Result<()> {
+        let mut ptr = tables::OUTPOINT_BY_HEIGHT
+            .select_value::<u64>(height);
+        ptr.nullify();
+        for tx in &block.txdata {
+            let output_len = tx.output.len();
+            for i in 0..output_len {
+                if tx.output[i].script_pubkey.is_op_return() {
+                    // Combine vout and output_len into a single u32
+                    // Use the lower 16 bits for vout and upper 16 bits for output_len
+                    let combined_vout = ((output_len as u32) << 16) | (i as u32);
+                    let outpoint_bytes = outpoint_encode(
+                        &(OutPoint {
+                            txid: tx.compute_txid(),
+                            vout: combined_vout,
+                        }),
+                    )?;
+                    ptr.append(Arc::new(outpoint_bytes.clone()));
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub fn index_outpoints(block: &Block, height: u64) -> Result<()> {
         let mut atomic = AtomicPointer::default();
         for tx in &block.txdata {
@@ -983,6 +1009,7 @@ impl Protorune {
             .select(&consensus_encode(&block.block_hash())?)
             .set_value::<u64>(height);
         Self::index_transaction_ids(&block, height)?;
+        Self::index_op_return_outpoints(&block, height)?;
         Self::index_outpoints(&block, height)?;
 
         // Get the set of updated addresses

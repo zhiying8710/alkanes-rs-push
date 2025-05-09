@@ -138,6 +138,9 @@ pub static RUNES: Lazy<RuneTable> = Lazy::new(|| RuneTable::new());
 pub static HEIGHT_TO_RUNES: Lazy<IndexPointer> =
     Lazy::new(|| IndexPointer::from_keyword("/runes/byheight/"));
 
+pub static OUTPOINT_BY_HEIGHT: Lazy<IndexPointer> =
+    Lazy::new(|| IndexPointer::from_keyword("/outpoint/byheight/"));
+
 pub static OUTPOINTS_FOR_ADDRESS: Lazy<IndexPointer> =
     Lazy::new(|| IndexPointer::from_keyword("/outpoint/byaddress/"));
 
